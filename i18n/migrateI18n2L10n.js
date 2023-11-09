@@ -1,6 +1,9 @@
 const glob = require("glob");
 const fse = require("fs-extra");
 const path = require("path")
+const JSON5 = require('json5');
+const { log } = require("console");
+const { verify } = require("crypto");
 
 function getLanguageFile(language) {
 	const result = [];
@@ -17,19 +20,85 @@ function getLanguageFile(language) {
 }
 
 function processFile(master, target) {
-	console.log(master);
-	console.log(target);
-	const dataResult = {};
-	const dataMaster = fse.readJSONSync(master);
-	const dataTarget = fse.readJSONSync(target);
+	console.log("Processing " + target);
+	var dataResult = {};
+	var contentMaster;
+	var contentTarget;
+	var dataMaster;
+	var dataTarget;
+
+	try {
+		contentMaster = fse.readFileSync(master, { encoding: "utf-8" });
+		contentTarget = fse.readFileSync(target, { encoding: "utf-8" });
+		dataMaster = JSON5.parse(contentMaster);
+		dataTarget = JSON5.parse(contentTarget);
+	} catch (error) {
+		contentMaster = fse.readFileSync(master, { encoding: "ascii" });
+		contentTarget = fse.readFileSync(target, { encoding: "ascii" });
+		dataMaster = JSON5.parse(contentMaster);
+		dataTarget = JSON5.parse(contentTarget);
+	}
 
 	for (const key in dataMaster) {
 		if (dataTarget[key]) {
-			dataResult[dataMaster[key]] = dataMaster[key];
+			dataResult[dataMaster[key]] = dataTarget[key];
 		}
 	}
 
 	return dataResult;
+}
+
+function processLanguage(fileList, language, filesMaster) {
+	const bundleData = {}
+
+	filesMaster.forEach(master => {
+		fileList.filter((file) => {
+			const aux = file.replace("/" + language + "/", "/master/")
+			return aux == master;
+		}).forEach(target => {
+			const data = processFile(master, target);
+			for (const key in data) {
+				if (!bundleData[key]) {
+					bundleData[key] = data[key];
+				} else {
+					console.info("Duplicate key " + key + " in " + language);
+				}
+			}
+		})
+	});
+
+	if (language == "ptb") {
+		language = "pt-BR"
+	}
+
+	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".json");
+	fse.writeJSONSync(bundleFile, bundleData, { encoding: "utf-8" });
+}
+
+function verifyResult(language) {
+	const master = path.join(process.cwd(), "l10n", "bundle.l10n.json")
+	const contentMaster = fse.readFileSync(master, { encoding: "utf-8" });
+	const bundleLanguage = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".json")
+	const contentLanguage = fse.readFileSync(bundleLanguage, { encoding: "utf-8" });
+	const dataMaster = JSON5.parse(contentMaster);
+	const dataLanguage = JSON5.parse(contentLanguage);
+
+	for (const key in dataMaster) {
+		if (!dataLanguage[key]) {
+			console.info(key + " not in " + language);
+			dataLanguage[key] = dataMaster[key];
+		}
+	};
+
+	for (const key in dataLanguage) {
+		if (!dataMaster[key]) {
+			console.info(key + " not in MASTER");
+		}
+	};
+
+	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".full.json");
+	fse.writeJSONSync(bundleFile, dataLanguage, { encoding: "utf-8" });
+
 }
 
 function main() {
@@ -40,35 +109,13 @@ function main() {
 	const filesRus = getLanguageFile("rus");
 	const filesPtb = getLanguageFile("ptb");
 
-	filesMaster.forEach(master => {
-		filesEsn.filter((file) => {
-			const aux = file.replace("/esn/", "/master/")
-			return aux == master;
-		}).forEach(target => {
-			const data = processFile(master, target);
-			const bundleFile = path(process.cwd, "l10n", "bundle.l10n.esn.json");
-			fse.writeJSONSync(bundleFile, data);
-		})
+	processLanguage(filesEsn, "esn", filesMaster);
+	processLanguage(filesRus, "rus", filesMaster);
+	processLanguage(filesPtb, "ptb", filesMaster);
 
-		filesRus.filter((file) => {
-			const aux = file.replace("/rus/", "/master/")
-			return aux == master;
-		}).forEach(target => {
-			const data = processFile(master, target);
-			const bundleFile = path(process.cwd, "l10n", "bundle.l10n.rus.json");
-			fse.writeJSONSync(bundleFile, data);
-		})
-
-		filesPtb.filter((file) => {
-			const aux = file.replace("/ptb/", "/master/")
-			return aux == master;
-		}).forEach(target => {
-			const data = processFile(master, target);
-			const bundleFile = path(process.cwd, "l10n", "bundle.l10n.pt-BR.json");
-			fse.writeJSONSync(bundleFile, data);
-		})
-
-	});
+	verifyResult("esn");
+	verifyResult("rus");
+	verifyResult("pt-BR");
 
 	console.log("End migrate data files");
 }
