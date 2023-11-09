@@ -2,6 +2,15 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Migrate I18n2L10n",
+			"program": "${workspaceFolder}/i18n/migrateI18n2L10n.js",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"type": "node"
+		},
+		{
 			"args": [
 				"task"
 			],

@@ -70,6 +70,7 @@
     "---RELEASE---": "",
     "release": "npx standard-version --skip.changelog --release-as 2.0.0-RC14",
     "tag": "git push --follow-tags origin dev2",
+    "build": "gulp build",
     "package": "gulp package",
     "publish": "gulp publish",
     "pre-release": "gulp prerelease",

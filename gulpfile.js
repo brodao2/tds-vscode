@@ -25,9 +25,10 @@ const outDest = "out";
 
 // If all VS Code languages are support you can use nls.coreLanguages
 const languages = [
-  { id: "es", folderName: "esn" },
-  { id: "ru", folderName: "rus" },
-  { id: "pt-br", folderName: "ptb", transifexId: "pt_BR" },
+  // { id: "es", folderName: "esn" },
+  // { id: "ru", folderName: "rus" },
+  // { id: "pt-br", folderName: "ptb", transifexId: "pt_BR" },
+  { id: "fr", folderName: "fr" },
 ];
 
 const cleanTask = function () {
