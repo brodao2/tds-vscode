@@ -120,7 +120,7 @@ function verifyResult(language) {
 		}
 	};
 
-	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".full.json");
+	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".json");
 	fse.writeJSONSync(bundleFile, dataLanguage, { encoding: "utf-8", spaces: "  " });
 
 }
