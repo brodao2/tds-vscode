@@ -48,31 +48,55 @@ function processFile(master, target) {
 	return dataResult;
 }
 
-function processLanguage(fileList, language, filesMaster) {
-	const bundleData = {}
+function bundleI18n(language) {
+	const filesMaster = getLanguageFile(language);
+	var dataResult = {};
 
-	filesMaster.forEach(master => {
-		fileList.filter((file) => {
-			const aux = file.replace("/" + language + "/", "/master/")
-			return aux == master;
-		}).forEach(target => {
-			const data = processFile(master, target);
-			for (const key in data) {
-				if (!bundleData[key]) {
-					bundleData[key] = data[key];
-				} else {
-					console.info("Duplicate key " + key + " in " + language);
-				}
+	filesMaster.forEach((file) => {
+		var contentFile;
+		var dataFile;
+
+		try {
+			contentFile = fse.readFileSync(file, { encoding: "utf-8" });
+		} catch (error) {
+			contentFile = fse.readFileSync(file, { encoding: "ascii" });
+		}
+		dataFile = JSON5.parse(contentFile);
+
+		for (const key in dataFile) {
+			if (!dataResult[key]) {
+				dataResult[key] = dataFile[key];
+			} else if (dataResult[key] !== dataFile[key]) {
+				console.info("> Duplicate Key %s [%s] file %s", key, language, file);
+				console.info("  Result: %s", dataResult[key]);
+				console.info("  File  : %s", dataFile[key]);
+				dataResult[key] = dataFile[key];
 			}
-		})
-	});
+		}
+	})
+
+	return dataResult;
+}
+
+function processLanguage(language) {
+	const bundleMaster = bundleI18n("master");
+	const bundleLanguage = bundleI18n(language);
+	var dataResult = {}
+
+	for (const key in bundleMaster) {
+		if (bundleLanguage[key]) {
+			dataResult[bundleMaster[key]] = bundleLanguage[key];
+		} else {
+			dataResult[bundleMaster[key]] = bundleMaster[key];
+		}
+	}
 
 	if (language == "ptb") {
 		language = "pt-BR"
 	}
 
 	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".json");
-	fse.writeJSONSync(bundleFile, bundleData, { encoding: "utf-8" });
+	fse.writeJSONSync(bundleFile, dataResult, { encoding: "utf-8", spaces: "  " });
 }
 
 function verifyResult(language) {
@@ -97,21 +121,16 @@ function verifyResult(language) {
 	};
 
 	const bundleFile = path.join(process.cwd(), "l10n", "bundle.l10n." + language + ".full.json");
-	fse.writeJSONSync(bundleFile, dataLanguage, { encoding: "utf-8" });
+	fse.writeJSONSync(bundleFile, dataLanguage, { encoding: "utf-8", spaces: "  " });
 
 }
 
 function main() {
 	console.log("Start migrate data files");
 
-	const filesMaster = getLanguageFile("master");
-	const filesEsn = getLanguageFile("esn");
-	const filesRus = getLanguageFile("rus");
-	const filesPtb = getLanguageFile("ptb");
-
-	processLanguage(filesEsn, "esn", filesMaster);
-	processLanguage(filesRus, "rus", filesMaster);
-	processLanguage(filesPtb, "ptb", filesMaster);
+	processLanguage("esn");
+	processLanguage("rus");
+	processLanguage("ptb");
 
 	verifyResult("esn");
 	verifyResult("rus");
